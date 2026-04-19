@@ -1,0 +1,14 @@
+# 所有子项目的虚拟环境
+venv/
+.venv/
+env/
+
+# Python 缓存（所有子目录都会生效）
+__pycache__/
+*.pyc
+*.pyo
+
+# IDE 配置
+.idea/
+.vscode/
+*.iml
