@@ -52,7 +52,15 @@ async def create_token(db:AsyncSession,user_id:int):
 
 
 
+# 用户验证和密码验证
+async def authenticate_user(db:AsyncSession,username:str,password:str):
+    user = await get_by_username(db,username)
+    if not user:
+        return None
+    if not security.verify_password(password, user.password):
+        return None
 
+    return user
 
 
 

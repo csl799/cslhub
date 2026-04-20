@@ -10,3 +10,5 @@ def success_response(message:str = "success",data = None):
     }
     # 任何Fastapi pydantic orm对象 都要正常响应
     return JSONResponse(content=jsonable_encoder(content))
+
+
