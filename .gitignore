@@ -11,4 +11,4 @@ __pycache__/
 # IDE 配置
 .idea/
 .vscode/
-*.iml
+*.iml__pycache__/
