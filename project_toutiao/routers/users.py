@@ -4,10 +4,11 @@ from sqlalchemy.sql import crud
 
 import utils.auth
 from config.db_config import get_db
-from schemas.users import UserRequest, UserAuthResponse, UserInfoBase, UserInfoResponse
+from schemas.users import UserRequest, UserAuthResponse, UserInfoBase, UserInfoResponse,UserUpdateRequest
 from crud import users
 from utils import response,auth
 from models.users import User
+from utils.auth import get_current_user
 
 router = APIRouter(prefix="/api/user",tags=["users"])
 
@@ -48,6 +49,17 @@ async def get_user_info(user:User = Depends(auth.get_current_user)):
 
 
 
+# 修改用户信息 验证token 更新用户输入数据 put提交 请求体参数 定义pydantic模型类 响应结果
+# 参数包含用户输入的 验证token的 db调用更新的方法
+@router.put("/update")
+async def update_user_info(
+        user_data:UserUpdateRequest,
+        user:User = Depends(get_current_user),
+        db:AsyncSession = Depends(get_db)
+):
+    user = await users.update_user(db,user.username,user_data)
+
+    return response.success_response(message = "更新用户信息成功",data = UserInfoResponse.model_validate(user))
 
 
 
