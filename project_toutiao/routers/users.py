@@ -4,7 +4,8 @@ from sqlalchemy.sql import crud
 
 import utils.auth
 from config.db_config import get_db
-from schemas.users import UserRequest, UserAuthResponse, UserInfoBase, UserInfoResponse,UserUpdateRequest
+from schemas.users import UserRequest, UserAuthResponse, UserInfoBase, UserInfoResponse, UserUpdateRequest, \
+    UserChangePasswordRequest
 from crud import users
 from utils import response,auth
 from models.users import User
@@ -64,5 +65,16 @@ async def update_user_info(
 
 
 
+# 修改用户密码
+@router.put("/update_password")
+async def update_user_password(
+        password_data:UserChangePasswordRequest,
+        user:User = Depends(auth.get_current_user),
+        db:AsyncSession = Depends(get_db)
+):
+    res_update_password = await users.update_password(db,user,password_data.old_password,password_data.new_password)
+    if not res_update_password:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,detail="修改密码失败")
 
+    return response.success_response(message="修改密码成功")
 
