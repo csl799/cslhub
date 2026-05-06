@@ -2,6 +2,7 @@
 venv/
 .venv/
 env/
+.env/
 
 # Python 缓存（所有子目录都会生效）
 __pycache__/
