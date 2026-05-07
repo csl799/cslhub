@@ -1,0 +1,10 @@
+langchain>=0.3
+langchain-core>=0.3
+langchain-deepseek>=0.1
+langgraph>=0.2
+langgraph-checkpoint-mysql[pymysql]>=2.0
+cryptography>=42.0.0
+python-dotenv>=1.0
+tzdata>=2024.1
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0

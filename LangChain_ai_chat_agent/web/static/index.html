@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AI 对话</title>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --panel: #fff;
+      --border: #e2e4ea;
+      --text: #1a1d26;
+      --muted: #6b7280;
+      --user-bg: #e8efff;
+      --bot-bg: #f0f1f3;
+      --accent: #2563eb;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "PingFang SC", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 1.5rem 1rem 2rem;
+    }
+    h1 { font-size: 1.125rem; font-weight: 600; margin: 0 0 1rem; color: var(--muted); }
+    .shell {
+      width: min(720px, 100%);
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 4px 24px rgba(0,0,0,.06);
+      display: flex;
+      flex-direction: column;
+      min-height: 420px;
+      max-height: min(78vh, 640px);
+    }
+    #log {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1rem 1.1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+    }
+    .msg {
+      max-width: 94%;
+      padding: 0.65rem 0.85rem;
+      border-radius: 10px;
+      line-height: 1.55;
+      font-size: 0.95rem;
+      word-break: break-word;
+    }
+    .msg.user {
+      align-self: flex-end;
+      background: var(--user-bg);
+      border: 1px solid #d6e4ff;
+      white-space: pre-wrap;
+    }
+    .msg.assistant {
+      align-self: flex-start;
+      background: var(--bot-bg);
+      border: 1px solid var(--border);
+    }
+    .msg .label {
+      font-size: 0.7rem;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+      margin-bottom: 0.35rem;
+    }
+    .think-block {
+      font-size: 0.88rem;
+      color: var(--muted);
+      border-left: 3px solid #c5cad6;
+      padding: 0.35rem 0 0.35rem 0.65rem;
+      margin-bottom: 0.65rem;
+      white-space: pre-wrap;
+    }
+    .think-title { font-weight: 600; color: var(--muted); margin-bottom: 0.25rem; font-size: 0.75rem; }
+    .answer-block {
+      white-space: pre-wrap;
+      font-size: 0.95rem;
+    }
+    .answer-title { font-weight: 600; margin-bottom: 0.25rem; font-size: 0.75rem; color: var(--text); }
+    .composer {
+      border-top: 1px solid var(--border);
+      padding: 0.75rem 1rem 1rem;
+      display: flex;
+      gap: 0.5rem;
+      align-items: flex-end;
+    }
+    textarea {
+      flex: 1;
+      resize: none;
+      min-height: 44px;
+      max-height: 120px;
+      padding: 0.6rem 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font: inherit;
+      line-height: 1.45;
+    }
+    textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+    }
+    button {
+      padding: 0.55rem 1rem;
+      border: none;
+      border-radius: 8px;
+      background: var(--accent);
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+      height: 44px;
+    }
+    button:disabled { opacity: 0.55; cursor: not-allowed; }
+    .hint { font-size: 0.75rem; color: var(--muted); margin-top: 0.75rem; text-align: center; }
+    .err { color: #b91c1c; font-size: 0.85rem; padding: 0 1rem 0.5rem; }
+  </style>
+</head>
+<body>
+  <h1>AI 助手</h1>
+  <div class="shell">
+    <div id="log" aria-live="polite"></div>
+    <div id="err" class="err" hidden></div>
+    <form class="composer" id="form">
+      <textarea id="input" rows="2" placeholder="输入问题，Enter 发送；Shift+Enter 换行" required></textarea>
+      <button type="submit" id="send">发送</button>
+    </form>
+  </div>
+  <p class="hint">同一会话内连续提问会保留上下文；刷新页面将开启新会话。</p>
+  <script>
+    const logEl = document.getElementById("log");
+    const form = document.getElementById("form");
+    const input = document.getElementById("input");
+    const sendBtn = document.getElementById("send");
+    const errEl = document.getElementById("err");
+
+    let threadId = null;
+
+    function setErr(msg) {
+      if (!msg) { errEl.hidden = true; errEl.textContent = ""; return; }
+      errEl.hidden = false;
+      errEl.textContent = msg;
+    }
+
+    function appendUser(text) {
+      const wrap = document.createElement("div");
+      wrap.className = "msg user";
+      const lab = document.createElement("div");
+      lab.className = "label";
+      lab.textContent = "你";
+      const body = document.createElement("div");
+      body.textContent = text;
+      wrap.appendChild(lab);
+      wrap.appendChild(body);
+      logEl.appendChild(wrap);
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function beginAssistantBubble() {
+      const wrap = document.createElement("div");
+      wrap.className = "msg assistant";
+      const lab = document.createElement("div");
+      lab.className = "label";
+      lab.textContent = "助手";
+      const thinkWrap = document.createElement("div");
+      thinkWrap.className = "think-block";
+      const thinkTitle = document.createElement("div");
+      thinkTitle.className = "think-title";
+      thinkTitle.textContent = "正在思考";
+      const thinkBody = document.createElement("div");
+      thinkBody.className = "think-content";
+      thinkWrap.appendChild(thinkTitle);
+      thinkWrap.appendChild(thinkBody);
+      const ansTitle = document.createElement("div");
+      ansTitle.className = "answer-title";
+      ansTitle.textContent = "答案";
+      const ansBody = document.createElement("div");
+      ansBody.className = "answer-block";
+      wrap.appendChild(lab);
+      wrap.appendChild(thinkWrap);
+      wrap.appendChild(ansTitle);
+      wrap.appendChild(ansBody);
+      logEl.appendChild(wrap);
+      logEl.scrollTop = logEl.scrollHeight;
+      return { thinkWrap, thinkBody, ansBody };
+    }
+
+    async function consumeSSE(response, { thinkWrap, thinkBody, ansBody }) {
+      const reader = response.body.getReader();
+      const dec = new TextDecoder();
+      let buffer = "";
+      let noAnswerMarker = false;
+
+      const handleEvent = (ev, dataLine) => {
+        if (ev === "meta") {
+          const o = JSON.parse(dataLine);
+          if (o.thread_id) threadId = o.thread_id;
+          noAnswerMarker = !!o.no_answer_marker;
+          return;
+        }
+        if (ev === "thinking") {
+          const o = JSON.parse(dataLine);
+          thinkBody.textContent += o.delta || "";
+          logEl.scrollTop = logEl.scrollHeight;
+          return;
+        }
+        if (ev === "answer") {
+          const o = JSON.parse(dataLine);
+          ansBody.textContent += o.delta || "";
+          logEl.scrollTop = logEl.scrollHeight;
+          return;
+        }
+        if (ev === "error") {
+          const o = JSON.parse(dataLine);
+          throw new Error(o.error || "流式错误");
+        }
+      };
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += dec.decode(value, { stream: true });
+        const parts = buffer.split("\n\n");
+        buffer = parts.pop() || "";
+        for (const block of parts) {
+          if (!block.trim()) continue;
+          let ev = "message";
+          const lines = block.split("\n");
+          let data = "";
+          for (const line of lines) {
+            if (line.startsWith("event:")) ev = line.slice(6).trim();
+            else if (line.startsWith("data:")) data += line.slice(5).trimStart();
+          }
+          if (ev === "done") continue;
+          handleEvent(ev, data);
+        }
+      }
+      if (noAnswerMarker && !ansBody.textContent.trim() && thinkBody.textContent.trim()) {
+        ansBody.textContent = thinkBody.textContent.trim();
+        thinkBody.textContent = "";
+      }
+      if (!thinkBody.textContent.trim()) thinkWrap.style.display = "none";
+    }
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const text = input.value.trim();
+      if (!text) return;
+      setErr("");
+      appendUser(text);
+      input.value = "";
+      sendBtn.disabled = true;
+      const { thinkWrap, thinkBody, ansBody } = beginAssistantBubble();
+      try {
+        const res = await fetch("/api/chat/stream", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: text, thread_id: threadId }),
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          const d = data.detail;
+          const msg =
+            typeof d === "string"
+              ? d
+              : Array.isArray(d)
+                ? d.map((x) => x.msg || JSON.stringify(x)).join("; ")
+                : res.statusText;
+          throw new Error(msg || "请求失败");
+        }
+        await consumeSSE(res, { thinkWrap, thinkBody, ansBody });
+      } catch (err) {
+        setErr(String(err.message || err));
+      } finally {
+        sendBtn.disabled = false;
+        input.focus();
+      }
+    });
+
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        form.requestSubmit();
+      }
+    });
+  </script>
+</body>
+</html>

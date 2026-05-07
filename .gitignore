@@ -13,3 +13,4 @@ __pycache__/
 .idea/
 .vscode/
 *.iml__pycache__/
+.env
