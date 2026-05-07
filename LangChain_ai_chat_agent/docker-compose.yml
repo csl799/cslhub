@@ -1,0 +1,46 @@
+# 启动：在项目根目录执行  docker compose up --build
+# 浏览器打开 http://localhost:8000
+#
+# 准备 .env：至少 JWT_SECRET_KEY；对话模型需 DEEPSEEK_API_KEY 等（与本地运行一致）。
+# 数据库：本 compose 会起一个 MySQL 8，root 密码用环境变量 MYSQL_ROOT_PASSWORD（默认 devroot），
+#         与下面 web 里 MYSQL_PASSWORD 一致。若改密码，请同步改 .env 或本文件 healthcheck。
+#
+# 若改用「本机已有 MySQL」：不要启动 mysql 服务，单独构建 web 并设置 MYSQL_HOST=host.docker.internal
+
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-devroot}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-langgraph_checkpoint}
+    ports:
+      - "${MYSQL_PUBLISH_PORT:-3306}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    command: ["mysqld", "--character-set-server=utf8mb4", "--collation-server=utf8mb4_0900_ai_ci"]
+    healthcheck:
+      # 使用容器内环境变量 MYSQL_ROOT_PASSWORD（与上面 environment 一致）
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD || exit 1"]
+      interval: 4s
+      timeout: 5s
+      retries: 30
+      start_period: 25s
+
+  web:
+    build: .
+    ports:
+      - "${WEB_PORT:-8000}:8000"
+    env_file:
+      - .env
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_PORT: "3306"
+      MYSQL_USER: root
+      MYSQL_PASSWORD: ${MYSQL_ROOT_PASSWORD:-devroot}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-langgraph_checkpoint}
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+volumes:
+  mysql_data:
