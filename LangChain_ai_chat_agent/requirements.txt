@@ -1,6 +1,8 @@
 langchain>=0.3
 langchain-core>=0.3
 langchain-deepseek>=0.1
+langchain-community>=0.3
+tavily-python>=0.5
 langgraph>=0.2
 langgraph-checkpoint-mysql[pymysql]>=2.0
 cryptography>=42.0.0

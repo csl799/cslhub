@@ -12,6 +12,7 @@ from langgraph.checkpoint.base import BaseCheckpointSaver
 
 from middleware import build_message_summary_middleware
 from prompts import DEFAULT_SYSTEM_PROMPT
+from tools.tavily_web import web_search
 from tools.weather import get_weather
 
 CHAT_MODEL = os.getenv("CHAT_MODEL", "deepseek-chat").strip()
@@ -24,7 +25,7 @@ def create_chat_agent(checkpointer: BaseCheckpointSaver[str]) -> Any:
     return create_agent(
         model=CHAT_MODEL,
         system_prompt=DEFAULT_SYSTEM_PROMPT,
-        tools=[get_weather],
+        tools=[get_weather, web_search],
         checkpointer=checkpointer,
         middleware=[build_message_summary_middleware(model=CHAT_MODEL)],
     )
