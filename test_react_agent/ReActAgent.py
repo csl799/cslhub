@@ -21,7 +21,7 @@ class ReActAgent:
         self.model = model
         self.project_directory = project_directory
         self.client = OpenAI(
-            base_url = "",
+            base_url = "https://api.deepseek.com",
             api_key = ReActAgent.get_api_key(),
         )
 
@@ -97,9 +97,9 @@ class ReActAgent:
     def get_api_key() -> str:
         """Load the API key from an environment variable."""
         load_dotenv()
-        api_key = os.getenv("OPENROUTER_API_KEY")
+        api_key = os.getenv("DEEPSEEK_API_KEY")
         if not api_key:
-            raise ValueError("未找到 OPENROUTER_API_KEY 环境变量，请在 .env 文件中设置。")
+            raise ValueError("DEEPSEEK_API_KEY 环境变量，请在 .env 文件中设置。")
         return api_key
 
     def call_model(self, messages):
