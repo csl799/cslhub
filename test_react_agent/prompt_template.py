@@ -36,9 +36,18 @@ react_system_prompt_template = """
 
 ——
 
+例子3（无需工具，直接作答）:
+
+<question>1+1等于几？请简要说明。</question>
+<thought>这是基础算术，不需要调用任何工具即可回答。</thought>
+<final_answer>1+1等于2。在自然数加法下，1 与 1 的和定义为 2。</final_answer>
+
+——
+
 
 请严格遵守:
 - 你每次回答都必须包含两个标签，第一个是<thought>，第二个是<action>或者<final_answer>
+- 若问题只需基于常识或推理即可回答，不需要读文件、写文件或执行终端命令，则在 <thought> 中说明「无需工具」后，直接输出成对的 <final_answer>...</final_answer>，不要调用工具，也不要编造不存在的工具名
 - 输出<action>后立刻停止生产，等待真实的<observation>，擅自生成<observation>将导致错误
 - 如果<action>中的某个工具参数有多行的话，请使用 \n 来表示,如:<action>write_to_file("/tmp/test.txt","a\nb\nc")</action>
 - 工具参数中文件路径请使用绝对路径，不要只给出一个文件名。比如要写 write_to_file("/tmp/test.txt","内容")，而不是write_to_file("test.txt","内容")

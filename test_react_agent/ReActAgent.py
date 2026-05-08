@@ -101,9 +101,22 @@ class ReActAgent:
                 continue
 
             # 检测 Action
-            action_match = re.search(r"<action>(.*)</action>",content,re.DOTALL)
+            action_match = re.search(r"<action>(.*)</action>", content, re.DOTALL)
             if not action_match:
-                raise RuntimeError("模型未输出<action>")
+                messages.append(
+                    {
+                        "role": "user",
+                        "content": (
+                            "你上一轮回复既没有成对的 <final_answer>...</final_answer>，"
+                            "也没有成对的 <action>...</action>。"
+                            "请二选一重新输出本轮内容："
+                            "若不需要工具，请输出 <thought>...</thought> 后紧跟完整的 <final_answer>...</final_answer>；"
+                            "若需要工具，请输出 <thought>...</thought> 后紧跟完整的 <action>...</action>（参数与可用工具一致），"
+                            "且输出 <action> 后不要自己写 <observation>。"
+                        ),
+                    }
+                )
+                continue
             action = action_match.group(1)
             tool_name,args = self.parse_action(action)
 

@@ -5,8 +5,12 @@ from Use_tools import *
 from ReActAgent import ReActAgent
 
 @click.command()
-@click.argument("project_directory",
-                type = click.Path(exists = True,file_okay = False,dir_okay = True))
+@click.argument(
+    "project_directory",
+    required=False,
+    default=".",
+    type=click.Path(exists=True, file_okay=False, dir_okay=True),
+)
 def main(project_directory):
     project_dic = os.path.abspath(project_directory)
 
