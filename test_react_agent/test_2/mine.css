@@ -1,0 +1,123 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.container {
+    background: white;
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    text-align: center;
+}
+
+h1 {
+    color: #333;
+    margin-bottom: 20px;
+    font-size: 2em;
+}
+
+.game-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 10px 20px;
+    background: #f5f5f5;
+    border-radius: 8px;
+    font-size: 1.1em;
+    font-weight: bold;
+}
+
+#reset-btn {
+    padding: 8px 20px;
+    font-size: 1em;
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+#reset-btn:hover {
+    background: #5a6fd6;
+}
+
+#game-board {
+    display: inline-grid;
+    gap: 2px;
+    background: #999;
+    border: 2px solid #666;
+    border-radius: 5px;
+}
+
+.cell {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: #b0b0b0;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: bold;
+    transition: background 0.1s;
+}
+
+.cell:hover {
+    background: #c0c0c0;
+}
+
+.cell.covered {
+    background: linear-gradient(145deg, #c0c0c0, #a0a0a0);
+    border: 1px solid #d0d0d0;
+    box-shadow: inset 1px 1px 2px rgba(255,255,255,0.3), inset -1px -1px 2px rgba(0,0,0,0.2);
+}
+
+.cell.covered:hover {
+    background: linear-gradient(145deg, #d0d0d0, #b0b0b0);
+}
+
+.cell.uncovered {
+    background: #ddd;
+    border: 1px solid #ccc;
+}
+
+.cell.mine {
+    background: #ff4444;
+    color: white;
+    border: 1px solid #cc0000;
+}
+
+.cell.flagged {
+    background: #ffd700;
+    color: #333;
+    border: 1px solid #daa520;
+}
+
+.cell.flagged::after {
+    content: '⚑';
+    font-size: 20px;
+}
+
+/* 数字颜色 */
+.cell.n1 { color: blue; }
+.cell.n2 { color: green; }
+.cell.n3 { color: red; }
+.cell.n4 { color: darkblue; }
+.cell.n5 { color: darkred; }
+.cell.n6 { color: teal; }
+.cell.n7 { color: black; }
+.cell.n8 { color: gray; }

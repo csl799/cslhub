@@ -1,8 +1,10 @@
 from collections.abc import Callable
+from functools import wraps
 from openai import OpenAI
 import inspect
 import ast
 import os
+import subprocess
 import re
 import platform
 from typing import List, Tuple
@@ -17,13 +19,49 @@ load_dotenv()
 
 class ReActAgent:
     def __init__(self,tools:list[Callable],model:str,project_directory:str):
-        self.tools = {func.__name__:func for func in tools}
+        self.project_directory = os.path.abspath(project_directory)
+        self.tools = {func.__name__: self._wrap_tool(func) for func in tools}
         self.model = model
-        self.project_directory = project_directory
         self.client = OpenAI(
             base_url = "https://api.deepseek.com",
             api_key = ReActAgent.get_api_key(),
         )
+
+    def _resolve_under_project(self, file_path: str) -> str:
+        if os.path.isabs(file_path):
+            return file_path
+        return os.path.normpath(os.path.join(self.project_directory, file_path))
+
+    def _wrap_tool(self, func: Callable) -> Callable:
+        root = self.project_directory
+        name = func.__name__
+
+        if name == "read_file":
+            @wraps(func)
+            def wrapped(file_path: str):
+                return func(self._resolve_under_project(file_path))
+            return wrapped
+
+        if name == "write_to_file":
+            @wraps(func)
+            def wrapped(file_path: str, content: str):
+                path = self._resolve_under_project(file_path)
+                parent = os.path.dirname(path)
+                if parent:
+                    os.makedirs(parent, exist_ok=True)
+                return func(path, content)
+            return wrapped
+
+        if name == "run_terminal_command":
+            @wraps(func)
+            def wrapped(command: str):
+                run_result = subprocess.run(
+                    command, shell=True, capture_output=True, text=True, cwd=root
+                )
+                return "执行成功" if run_result.returncode == 0 else run_result.stderr
+            return wrapped
+
+        return func
 
     def run(self,use_input:str):
         messages = [
@@ -42,10 +80,25 @@ class ReActAgent:
                 thought = thought_match.group(1)
                 print(f"\n\n Thought: {thought}")
 
-            # 检测模型是否输出 Final Answer,如果是的话，直接返回
+            # 检测模型是否输出 Final Answer（须成对标签），匹配成功才返回
+            final_answer_match = re.search(
+                r"<final_answer>(.*)</final_answer>", content, re.DOTALL
+            )
+            if final_answer_match:
+                return final_answer_match.group(1).strip()
+
             if "<final_answer>" in content:
-                final_answer = re.search(r"<final_answer>(.*)</final_answer>",content,re.DOTALL)
-                return final_answer.group(1)
+                messages.append(
+                    {
+                        "role": "user",
+                        "content": (
+                            "你上一轮回复里出现了 <final_answer>，但未与 </final_answer> 成对闭合。"
+                            "请重新输出：要么给出完整的 <final_answer>...</final_answer>，"
+                            "要么在本轮只使用 <thought> 与 <action> 继续调用工具。"
+                        ),
+                    }
+                )
+                continue
 
             # 检测 Action
             action_match = re.search(r"<action>(.*)</action>",content,re.DOTALL)
@@ -58,7 +111,7 @@ class ReActAgent:
             print(f"\n\n Action:{tool_name}({','.join(args)})")
             # 只有终端命令才需要询问用户，其他的工具直接执行
             should_continue = input(f"\n\n Continue? (y/n): ") if tool_name == "run_terminal_command" else "y"
-            if should_continue.lower() == "y":
+            if should_continue.lower() != "y":
                 print("\n\n操作已取消。")
                 return "操作被用户取消"
 
