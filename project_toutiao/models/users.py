@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Index,Integer,String,Enum,DateTime,ForeignKey
+from sqlalchemy import Index, Integer, String, Enum, DateTime, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase,Mapped,mapped_column
 
 
@@ -60,3 +60,28 @@ class UserToken(Base):
 
     def __repr__(self):
         return f"<UserToken(id={self.id}, user_id={self.user_id}, token='{self.token}')>"
+
+
+class UserFavorite(Base):
+    """
+    用户新闻收藏（同一用户对同一新闻仅一条记录）
+    """
+
+    __tablename__ = "user_favorite"
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "news_id", name="uk_user_news_favorite"),
+        Index("idx_user_favorite_user_id", "user_id"),
+        Index("idx_user_favorite_news_id", "news_id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="收藏记录ID")
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("user.id", ondelete="CASCADE"), nullable=False, comment="用户ID"
+    )
+    news_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("news.id", ondelete="CASCADE"), nullable=False, comment="新闻ID"
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.now, comment="收藏时间"
+    )
