@@ -7,7 +7,14 @@ from collections.abc import Iterator
 from typing import Any, Literal
 
 from langchain.agents import create_agent
-from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage
+from langchain_core.messages import (
+    AIMessage,
+    AIMessageChunk,
+    BaseMessage,
+    HumanMessage,
+    SystemMessage,
+    ToolMessage,
+)
 from langgraph.checkpoint.base import BaseCheckpointSaver
 
 from middleware import build_message_summary_middleware
@@ -92,3 +99,50 @@ def split_raw_thinking_answer(raw: str) -> tuple[str, str]:
         pre, post = raw.split(_ANS_MARK, 1)
         return _strip_think_header(pre).strip(), post.strip()
     return "", raw.strip()
+
+
+def _flatten_content(content: Any) -> str:
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts: list[str] = []
+        for p in content:
+            if isinstance(p, dict) and p.get("type") == "text":
+                parts.append(str(p.get("text") or ""))
+            elif isinstance(p, str):
+                parts.append(p)
+        return "".join(parts)
+    return str(content) if content is not None else ""
+
+
+def _message_to_api_dict(msg: BaseMessage) -> dict[str, str] | None:
+    if isinstance(msg, SystemMessage):
+        return None
+    if isinstance(msg, HumanMessage):
+        role = "user"
+    elif isinstance(msg, AIMessage):
+        role = "assistant"
+    elif isinstance(msg, ToolMessage):
+        role = "tool"
+    else:
+        role = getattr(msg, "type", None) or "unknown"
+    return {"role": role, "content": _flatten_content(msg.content)}
+
+
+def get_thread_history_messages(agent: Any, thread_id: str) -> list[dict[str, str]]:
+    cfg = {"configurable": {"thread_id": thread_id.strip()}}
+    try:
+        snap = agent.get_state(cfg)
+    except Exception:
+        return []
+    if snap is None or not getattr(snap, "values", None):
+        return []
+    raw = snap.values.get("messages") or []
+    out: list[dict[str, str]] = []
+    for m in raw:
+        if not isinstance(m, BaseMessage):
+            continue
+        item = _message_to_api_dict(m)
+        if item is not None:
+            out.append(item)
+    return out

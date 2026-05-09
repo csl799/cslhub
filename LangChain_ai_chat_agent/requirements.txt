@@ -14,3 +14,6 @@ sqlalchemy[asyncio]>=2.0
 asyncmy>=0.2
 PyJWT>=2.8
 bcrypt>=4.1
+
+pydantic
+pymysql

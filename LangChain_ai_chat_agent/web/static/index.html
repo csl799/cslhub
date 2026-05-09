@@ -166,19 +166,71 @@
         d.textContent = (c.updated_at || "").replace("T", " ").slice(0, 16);
         div.appendChild(t);
         div.appendChild(d);
-        div.onclick = () => selectConv(c.id, c.title);
+        div.onclick = () => void selectConv(c.id, c.title);
         box.appendChild(div);
       }
     }
 
-    function selectConv(id, title) {
+    function renderHistoryItem(item) {
+      const log = document.getElementById("log");
+      if (item.role === "user") {
+        appendUser(item.content);
+        return;
+      }
+      if (item.role === "assistant") {
+        const raw = item.content || "";
+        const mark = "答案：";
+        const i = raw.indexOf(mark);
+        const { thinkWrap, thinkBody, ansBody } = beginAssistant();
+        if (i >= 0) {
+          thinkBody.textContent = raw.slice(0, i).replace(/^正在思考：\s*/i, "").trim();
+          ansBody.textContent = raw.slice(i + mark.length).trim();
+        } else {
+          thinkWrap.style.display = "none";
+          ansBody.textContent = raw;
+        }
+        if (!thinkBody.textContent.trim()) thinkWrap.style.display = "none";
+        log.scrollTop = log.scrollHeight;
+        return;
+      }
+      if (item.role === "tool") {
+        const wrap = document.createElement("div");
+        wrap.className = "msg assistant";
+        const lab = document.createElement("div");
+        lab.className = "label";
+        lab.textContent = "工具";
+        const body = document.createElement("div");
+        body.style.fontSize = "0.85rem";
+        body.style.color = "var(--muted)";
+        body.textContent = item.content;
+        wrap.appendChild(lab);
+        wrap.appendChild(body);
+        log.appendChild(wrap);
+        log.scrollTop = log.scrollHeight;
+      }
+    }
+
+    async function loadConversationHistory(convId) {
+      const res = await fetch("/api/conversations/" + convId + "/messages", { headers: authHeaders() });
+      if (!res.ok) {
+        showChatErr("加载历史失败");
+        return;
+      }
+      const data = await res.json();
+      document.getElementById("log").innerHTML = "";
+      for (const m of data.messages || []) {
+        renderHistoryItem(m);
+      }
+    }
+
+    async function selectConv(id, title) {
       currentConvId = id;
       document.querySelectorAll(".conv").forEach((el) => el.classList.toggle("on", +el.dataset.id === id));
       document.getElementById("mainHead").textContent = "当前会话 #" + id + " · " + (title || "");
-      document.getElementById("log").innerHTML = "";
       document.getElementById("chatInput").disabled = false;
       document.getElementById("chatSend").disabled = false;
       showChatErr("");
+      await loadConversationHistory(id);
     }
 
     async function newConversation() {
@@ -186,7 +238,7 @@
       if (!res.ok) { showChatErr("创建会话失败"); return; }
       const c = await res.json();
       await refreshConversations();
-      selectConv(c.id, c.title);
+      await selectConv(c.id, c.title);
     }
 
     document.getElementById("tabLogin").onclick = () => switchTab(false);
