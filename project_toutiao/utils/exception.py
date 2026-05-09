@@ -63,20 +63,26 @@ async def sqlalchemy_exception_handler(request: Request,exc: SQLAlchemyError):
     """
     # 开发模式下返回详细错误信息
     error_data = None
+    orig = getattr(exc, "orig", None)
+    brief = str(orig) if orig is not None else str(exc)
     if DEBUG_MODE:
         error_data = {
-            "error_type":type(exc).__name__,
-            "error_detail":str(exc),
-            "traceback":traceback.format_exc(),
-            "path":str(request.url),
+            "error_type": type(exc).__name__,
+            "error_detail": str(exc),
+            "error_orig": brief,
+            "traceback": traceback.format_exc(),
+            "path": str(request.url),
         }
+    message = "数据库操作失败，请稍后重试"
+    if DEBUG_MODE and brief:
+        message = f"数据库操作失败：{brief}"
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content = {
+        content={
             "code": 500,
-            "message":"数据库操作失败，请稍后重试",
-            "data":error_data
-        }
+            "message": message,
+            "data": error_data,
+        },
     )
 
 

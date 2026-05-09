@@ -79,9 +79,9 @@ class UserFavorite(Base):
     user_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("user.id", ondelete="CASCADE"), nullable=False, comment="用户ID"
     )
-    news_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("news.id", ondelete="CASCADE"), nullable=False, comment="新闻ID"
-    )
+    # 不在此声明指向 news 表的 ForeignKey：News 模型在 models.news 的另一套 Base.metadata 中，
+    # SQLAlchemy 无法跨 MetaData 解析 "news.id"，会在运行时报错。数据库层仍可由 user_favorite.sql 的外键保证。
+    news_id: Mapped[int] = mapped_column(Integer, nullable=False, comment="新闻ID")
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.now, comment="收藏时间"
     )
