@@ -1,71 +1,75 @@
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Index, Integer, String, Enum, DateTime, ForeignKey, UniqueConstraint
-from sqlalchemy.orm import DeclarativeBase,Mapped,mapped_column
-
-
+from sqlalchemy import DateTime, Enum, ForeignKey, Index, Integer, String, UniqueConstraint
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
 class Base(DeclarativeBase):
     pass
 
 
-
-
 class User(Base):
-    """
-    用户信息表orm模型类
-    """
     __tablename__ = "user"
 
-    # 创建索引
     __table_args__ = (
-        Index('username_UNIQUE', 'username'),
-        Index('phone_UNIQUE', 'phone'),
+        Index("username_UNIQUE", "username"),
+        Index("phone_UNIQUE", "phone"),
     )
 
-    id : Mapped[int] = mapped_column(Integer,primary_key=True,autoincrement=True,comment="用户ID")
-    username: Mapped[str] = mapped_column(String(50),unique=True,nullable=False,comment="用户名")
-    password: Mapped[str] = mapped_column(String(255),nullable=False,comment="密码(加密储存)")
-    nickname: Mapped[Optional[str]] = mapped_column(String(50),comment="昵称")
-    avatar: Mapped[Optional[str]] = mapped_column(String(255),comment="头像URL")
-    gender: Mapped[Optional[str]] = mapped_column(Enum('male','female','unknown'),comment="性别")
-    bio: Mapped[Optional[str]] = mapped_column(String(500),comment="个人简介",
-                                               default="这个人很懒，什么都没有留下")
-    phone: Mapped[Optional[str]] = mapped_column(String(20),unique=True,comment="手机号")
-    created_at: Mapped[datetime] = mapped_column(DateTime,default=datetime.now,comment="创建时间")
-    updated_at: Mapped[datetime] = mapped_column(DateTime,default=datetime.now,onupdate=datetime.now,
-                                                 comment="更新时间")
-
+    id: Mapped[int] = mapped_column(
+        Integer, primary_key=True, autoincrement=True, comment="用户ID"
+    )
+    username: Mapped[str] = mapped_column(
+        String(50), unique=True, nullable=False, comment="用户名"
+    )
+    password: Mapped[str] = mapped_column(
+        String(255), nullable=False, comment="密码(加密储存)"
+    )
+    nickname: Mapped[Optional[str]] = mapped_column(String(50), comment="昵称")
+    avatar: Mapped[Optional[str]] = mapped_column(String(255), comment="头像URL")
+    gender: Mapped[Optional[str]] = mapped_column(
+        Enum("male", "female", "unknown"), comment="性别"
+    )
+    bio: Mapped[Optional[str]] = mapped_column(
+        String(500),
+        default="这个人很懒，什么都没有留下",
+        comment="个人简介",
+    )
+    phone: Mapped[Optional[str]] = mapped_column(String(20), unique=True, comment="手机号")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.now, comment="创建时间"
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.now, onupdate=datetime.now, comment="更新时间"
+    )
 
 
 class UserToken(Base):
-    """
-    用户令牌表ORM模型
-    """
-    __tablename__ = 'user_token'
+    __tablename__ = "user_token"
 
-    # 创建索引
     __table_args__ = (
-        Index('token_UNIQUE', 'token'),
-        Index('fk_user_token_user_idx', 'user_id'),
+        Index("token_UNIQUE", "token"),
+        Index("fk_user_token_user_idx", "user_id"),
     )
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="令牌ID")
-    user_id: Mapped[int] = mapped_column(Integer, ForeignKey(User.id), nullable=False, comment="用户ID")
-    token: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, comment="令牌值")
+    id: Mapped[int] = mapped_column(
+        Integer, primary_key=True, autoincrement=True, comment="令牌ID"
+    )
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey(User.id), nullable=False, comment="用户ID"
+    )
+    token: Mapped[str] = mapped_column(
+        String(255), unique=True, nullable=False, comment="令牌值"
+    )
     expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, comment="过期时间")
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(), comment="创建时间")
-
-    def __repr__(self):
-        return f"<UserToken(id={self.id}, user_id={self.user_id}, token='{self.token}')>"
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.now, comment="创建时间"
+    )
 
 
 class UserFavorite(Base):
-    """
-    用户新闻收藏（同一用户对同一新闻仅一条记录）
-    """
+    """用户收藏；news_id 外键在库表维护。"""
 
     __tablename__ = "user_favorite"
 
@@ -75,12 +79,12 @@ class UserFavorite(Base):
         Index("idx_user_favorite_news_id", "news_id"),
     )
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="收藏记录ID")
+    id: Mapped[int] = mapped_column(
+        Integer, primary_key=True, autoincrement=True, comment="收藏记录ID"
+    )
     user_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("user.id", ondelete="CASCADE"), nullable=False, comment="用户ID"
     )
-    # 不在此声明指向 news 表的 ForeignKey：News 模型在 models.news 的另一套 Base.metadata 中，
-    # SQLAlchemy 无法跨 MetaData 解析 "news.id"，会在运行时报错。数据库层仍可由 user_favorite.sql 的外键保证。
     news_id: Mapped[int] = mapped_column(Integer, nullable=False, comment="新闻ID")
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.now, comment="收藏时间"

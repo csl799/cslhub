@@ -1,70 +1,46 @@
 import traceback
 
-from fastapi import HTTPException,Request
+from fastapi import HTTPException, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from starlette import status
 
-# 开发模式 返回详细错误信息
-# 生产模式 返回简化错误信息
 DEBUG_MODE = True
 
 
-async def http_exception_handler(request: Request,exc: HTTPException):
-    """
-    处理HTTPException 异常
-    """
+async def http_exception_handler(_request: Request, exc: HTTPException):
     return JSONResponse(
         status_code=exc.status_code,
-        content={
-            "code": exc.status_code,
-            "message": exc.detail,
-            "data":None
-        }
+        content={"code": exc.status_code, "message": exc.detail, "data": None},
     )
 
 
-async def integrity_exception_handler(request: Request,exc: IntegrityError):
-    """
-    处理数据库完整性的约束错误
-    """
-    error_msg = str(exc.orig)
-
-    # 判断具体的约束错误类型
-    if "username_UNIQUE" in error_msg or "Duplicate entry" in error_msg:
+async def integrity_exception_handler(request: Request, exc: IntegrityError):
+    err = str(exc.orig)
+    if "username_UNIQUE" in err or "Duplicate entry" in err:
         detail = "用户名已存在"
-    elif "FOREIGN KEY" in error_msg:
+    elif "FOREIGN KEY" in err:
         detail = "关联数据不存在"
     else:
         detail = "数据约束冲突，请检查输入"
 
-    # 开发模式下返回详细错误信息
     error_data = None
     if DEBUG_MODE:
         error_data = {
-            "error_type":"IntegrityError",
-            "error_detail":error_msg,
-            "path":str(request.url),
+            "error_type": "IntegrityError",
+            "error_detail": err,
+            "path": str(request.url),
         }
-
     return JSONResponse(
-        status_code = status.HTTP_400_BAD_REQUEST,
-        content = {
-            "code": 400,
-            "message": detail,
-            "data":error_data
-        }
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={"code": 400, "message": detail, "data": error_data},
     )
 
 
-async def sqlalchemy_exception_handler(request: Request,exc: SQLAlchemyError):
-    """
-    处理SQLAlchemy 数据库错误
-    """
-    # 开发模式下返回详细错误信息
-    error_data = None
+async def sqlalchemy_exception_handler(request: Request, exc: SQLAlchemyError):
     orig = getattr(exc, "orig", None)
     brief = str(orig) if orig is not None else str(exc)
+    error_data = None
     if DEBUG_MODE:
         error_data = {
             "error_type": type(exc).__name__,
@@ -78,34 +54,20 @@ async def sqlalchemy_exception_handler(request: Request,exc: SQLAlchemyError):
         message = f"数据库操作失败：{brief}"
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content={
-            "code": 500,
-            "message": message,
-            "data": error_data,
-        },
+        content={"code": 500, "message": message, "data": error_data},
     )
 
 
-async def general_exception_handler(request: Request,exc: Exception):
-    """
-    处理所有未捕获的异常
-    """
-    # 开发模式下返回详细错误信息
+async def general_exception_handler(request: Request, exc: Exception):
     error_data = None
     if DEBUG_MODE:
         error_data = {
-            "error_type":type(exc).__name__,
-            "error_detail":str(exc),
-            # 格式化异常信息为字符串，方便日志记录和调试
-            "traceback":traceback.format_exc(),
-            "path":str(request.url),
+            "error_type": type(exc).__name__,
+            "error_detail": str(exc),
+            "traceback": traceback.format_exc(),
+            "path": str(request.url),
         }
-
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content = {
-            "code": 500,
-            "message":"服务器内部错误",
-            "data":error_data
-        }
+        content={"code": 500, "message": "服务器内部错误", "data": error_data},
     )

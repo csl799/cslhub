@@ -1,6 +1,5 @@
 import type { NewsSummary } from "@/types/news";
 
-/** 列表接口返回的 ORM 序列化可能是 snake_case */
 export function normalizeNewsSummary(raw: Record<string, unknown>): NewsSummary {
   const id = Number(raw.id);
   const categoryId = Number(raw.categoryId ?? raw.category_id ?? 0);

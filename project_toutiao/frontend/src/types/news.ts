@@ -1,4 +1,3 @@
-/** 与后端列表 ORM / 详情 JSON 对齐后的前端新闻摘要 */
 export interface NewsSummary {
   id: number;
   title: string;

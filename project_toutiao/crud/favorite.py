@@ -1,3 +1,5 @@
+from typing import Optional
+
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,7 +22,7 @@ async def news_exists(db: AsyncSession, news_id: int) -> bool:
     return (result.scalar_one() or 0) > 0
 
 
-async def add_favorite(db: AsyncSession, user_id: int, news_id: int) -> bool:
+async def add_favorite(db: AsyncSession, user_id: int, news_id: int) -> Optional[bool]:
     if not await news_exists(db, news_id):
         return False
     if await get_favorite_row(db, user_id, news_id):
