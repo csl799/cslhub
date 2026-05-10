@@ -1,0 +1,28 @@
+# 后端连接「宿主机」上的 MySQL（面试官用自己电脑上的库与数据）
+# 前端 + Nginx 反代 /api → 后端，浏览器只访问一个端口即可看到完整项目
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: news_app_api
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-mysql+aiomysql://root:123456@host.docker.internal:3306/news_app?charset=utf8mb4}
+      SQLALCHEMY_ECHO: ${SQLALCHEMY_ECHO:-false}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: news_app_web
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+    restart: unless-stopped

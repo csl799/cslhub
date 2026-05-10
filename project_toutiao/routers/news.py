@@ -72,7 +72,7 @@ async def get_news_detail(
     if not views_ras:
         raise HTTPException(status_code=404,detail="新闻不存在")
 
-    related_news = await news.related_news(db,news_detail.id,news_detail.category_id)
+    related_news = await news.related_news(db, news_detail.category_id, news_detail.id)
 
     return{
         "code":200,
