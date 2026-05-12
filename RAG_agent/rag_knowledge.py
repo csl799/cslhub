@@ -20,6 +20,7 @@ class KnowledgeIndexer:
     """按 knowledge_docs 文件变更增量感知；变更后全量重建 Chroma 集合。"""
 
     def __init__(self, project_root: str | Path) -> None:
+        # 绑定项目根路径，并确定知识库文档目录与 Chroma 持久化目录。
         self.project_root = Path(project_root).resolve()
         self.docs_dir = self.project_root / "knowledge_docs"
         self.chroma_dir = self.project_root / ".rag_chroma"
@@ -30,10 +31,12 @@ class KnowledgeIndexer:
         self._reranker: Any = None
 
     def _ensure_dirs(self) -> None:
+        # 若不存在则创建知识库目录与向量库目录。
         self.docs_dir.mkdir(parents=True, exist_ok=True)
         self.chroma_dir.mkdir(parents=True, exist_ok=True)
 
     def _scan_docs(self) -> dict[str, float]:
+        # 扫描 knowledge_docs 下所有 .txt/.md，返回「相对路径 → 修改时间」指纹表。
         if not self.docs_dir.is_dir():
             return {}
         out: dict[str, float] = {}
@@ -44,6 +47,7 @@ class KnowledgeIndexer:
         return out
 
     def _read_state(self) -> dict[str, float] | None:
+        # 读取上次成功索引后保存的文档指纹，用于判断是否需要重建。
         if not self.state_path.is_file():
             return None
         try:
@@ -53,6 +57,7 @@ class KnowledgeIndexer:
             return None
 
     def _write_state(self, fp: dict[str, float]) -> None:
+        # 将当前文档指纹写入磁盘，供下次与扫描结果比对。
         self.chroma_dir.mkdir(parents=True, exist_ok=True)
         self.state_path.write_text(
             json.dumps(fp, ensure_ascii=False, indent=2),
@@ -60,18 +65,21 @@ class KnowledgeIndexer:
         )
 
     def _load_embedder(self) -> None:
+        # 懒加载句向量模型，用于文档与查询的向量化。
         if self._embed_model is None:
             from sentence_transformers import SentenceTransformer
 
             self._embed_model = SentenceTransformer("BAAI/bge-large-zh-v1.5")
 
     def _load_reranker(self) -> None:
+        # 懒加载交叉编码器，用于对召回片段按与查询的相关性重排。
         if self._reranker is None:
             from sentence_transformers import CrossEncoder
 
             self._reranker = CrossEncoder("BAAI/bge-reranker-v2-m3")
 
     def _get_collection(self) -> Any:
+        # 获取或打开持久化 Chroma 集合（agent_kb）。
         if self._collection is not None:
             return self._collection
         import chromadb
@@ -85,6 +93,7 @@ class KnowledgeIndexer:
         return self._collection
 
     def _chunk_file(self, rel: str, text: str) -> list[tuple[str, str]]:
+        # 将单个文件正文按段落与最大长度切成多条，并生成稳定 chunk id。
         parts = [p.strip() for p in text.split("\n\n")]
         chunks: list[str] = []
         max_len = 1200
@@ -99,6 +108,7 @@ class KnowledgeIndexer:
         return [(f"{h}_{i}", c) for i, c in enumerate(chunks)]
 
     def _rebuild_index(self, fp: dict[str, float]) -> None:
+        # 清空并重建向量索引：按当前指纹重新分片、嵌入并写入 Chroma。
         import chromadb
 
         self._ensure_dirs()
@@ -150,6 +160,7 @@ class KnowledgeIndexer:
         self._write_state(fp)
 
     def ensure_fresh(self) -> None:
+        # 若磁盘上文档指纹与上次索引不一致，则触发全量重建。
         fp = self._scan_docs()
         prev = self._read_state()
         if prev is not None and prev == fp:
@@ -158,6 +169,7 @@ class KnowledgeIndexer:
         self._rebuild_index(fp)
 
     def search(self, query: str, top_k: int = 5) -> str:
+        # 保证索引最新后做向量召回与重排，返回格式化的文本片段供模型阅读。
         q = (query or "").strip()
         if not q:
             return "（检索失败：查询为空。）"
