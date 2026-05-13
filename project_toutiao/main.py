@@ -1,10 +1,20 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from config.db_config import init_db_schema
 from routers import favorite, news, users
 from utils.exception_handlers import register_exception_handlers
 
-app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await init_db_schema()
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
 register_exception_handlers(app)
 
 app.add_middleware(

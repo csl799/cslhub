@@ -33,3 +33,15 @@ async def get_db():
             raise
         finally:
             await session.close()
+
+
+async def init_db_schema() -> None:
+    """若表不存在则按 ORM 建表；不删数据、不做结构迁移。"""
+    import models.news  # noqa: F401
+    import models.users  # noqa: F401
+    from models.news import Base as NewsBase
+    from models.users import Base as UsersBase
+
+    async with async_engine.begin() as conn:
+        await conn.run_sync(NewsBase.metadata.create_all)
+        await conn.run_sync(UsersBase.metadata.create_all)
